@@ -17,6 +17,7 @@ class PayoffType(Enum):
 class VarianceReduction(Enum):
     NONE = "none"
     ANTITHETIC = "antithetic"
+    CONTROL_VARIATE = "control_variate"
 
 
 @dataclass

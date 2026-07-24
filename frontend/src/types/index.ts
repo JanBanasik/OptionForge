@@ -17,7 +17,7 @@ export interface PricingRequest {
   n_steps: number;
   option_type: "call" | "put";
   payoff_type: "european" | "asian";
-  variance_reduction: "none" | "antithetic";
+  variance_reduction: "none" | "antithetic" | "control_variate";
   seed?: number;
 }
 

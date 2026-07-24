@@ -130,6 +130,120 @@ def _simulate_antithetic_chunked(
     return averaged
 
 
+def _simulate_control_variate(
+    rng: Generator,
+    spot: float,
+    strike: float,
+    maturity: float,
+    r: float,
+    q: float,
+    sigma: float,
+    n_steps: int,
+    n_paths: int,
+    option_type: OptionType,
+    payoff_type: PayoffType,
+    discount: float,
+    chunk_size: int,
+) -> tuple[np.ndarray, float, float]:
+    """
+    Control variate simulation.
+
+    Each path produces two values:
+      X_i = discounted option payoff (what we want to estimate)
+      Y_i = discounted control payoff (what we know the true mean of)
+
+    The control is chosen so that E[Y] is known analytically:
+      European: Y = e^{-rT} * S_T        → E[Y] = S₀·e^{-qT} (forward)
+      Asian:    Y = e^{-rT}·max(S_T−K,0) → E[Y] = BS_price (European)
+
+    The optimal estimator is:
+      θ̂ = X̄ + β*·(μ_Y − Ȳ)
+    with β* = Cov(X,Y) / Var(Y).
+
+    Returns (X_array, mu_Y_true, Y_array) so the caller can compute
+    the control-variate-adjusted statistics.
+    """
+    # Simulate paths — we need the actual paths to extract the control from
+    # the SAME random numbers as the target payoff.
+    paths, discounted_x = _simulate_standard(
+        rng=rng, spot=spot, strike=strike, maturity=maturity,
+        r=r, q=q, sigma=sigma, n_steps=n_steps, n_paths=n_paths,
+        option_type=option_type, payoff_type=payoff_type,
+        discount=discount, chunk_size=chunk_size,
+    )
+
+    # Build control variate Y_i from the SAME terminal prices
+    terminals = paths[:, -1]
+
+    if payoff_type == PayoffType.EUROPEAN:
+        # Control: discounted terminal asset price
+        discounted_y = discount * terminals
+        mu_y_true = spot * np.exp(-q * maturity)  # E[e^{-rT}·S_T]
+    else:
+        # Asian option: control = European BS payoff from same terminals
+        if option_type == OptionType.CALL:
+            euro_payoffs = np.maximum(terminals - strike, 0.0)
+        else:
+            euro_payoffs = np.maximum(strike - terminals, 0.0)
+
+        discounted_y = discount * euro_payoffs
+        mu_y_true = black_scholes_price(
+            spot, strike, maturity, r, q, sigma, option_type,
+        )
+
+    return discounted_x, mu_y_true, discounted_y
+
+
+def _compute_statistics_cv(
+    x: np.ndarray,
+    mu_y_true: float,
+    y: np.ndarray,
+) -> dict:
+    """
+    Compute control-variate-adjusted statistics.
+
+    θ̂_CV = X̄ + β*·(μ_Y − Ȳ)
+    where β* = Σ(x_i − X̄)(y_i − Ȳ) / Σ(y_i − Ȳ)²
+
+    The variance of the CV estimator is:
+    Var(θ̂_CV) = (1/n)·(Var(X) − Cov(X,Y)²/Var(Y))
+    """
+    n = len(x)
+    x_mean = np.mean(x)
+    y_mean = np.mean(y)
+
+    # Covariance and variance
+    x_centered = x - x_mean
+    y_centered = y - y_mean
+    cov_xy = np.mean(x_centered * y_centered)  # population formula
+    var_y = np.mean(y_centered**2)
+
+    if var_y > 1e-16:
+        beta_star = cov_xy / var_y
+    else:
+        beta_star = 0.0
+
+    # CV-adjusted price
+    price = float(x_mean + beta_star * (mu_y_true - y_mean))
+
+    # CV-adjusted variance
+    var_x = np.mean(x_centered**2)
+    var_cv = max(var_x - cov_xy**2 / var_y, 0.0) if var_y > 1e-16 else var_x
+
+    # Sample statistics (ddof=1 for unbiased SE)
+    payoff_std = float(np.sqrt(var_cv * n / (n - 1))) if n > 1 else 0.0
+    standard_error = payoff_std / np.sqrt(n)
+    ci_half = 1.96 * standard_error
+
+    return {
+        "price": price,
+        "payoff_std": payoff_std,
+        "standard_error": standard_error,
+        "confidence_interval_lower": price - ci_half,
+        "confidence_interval_upper": price + ci_half,
+    }
+
+
 def _compute_statistics(discounted: np.ndarray) -> dict:
     """Compute price, std, SE, CI from discounted payoffs."""
     n = len(discounted)
@@ -226,7 +340,27 @@ def monte_carlo_price(
         )
         payoff_mean_disc = float(np.mean(discounted))
 
-    stats = _compute_statistics(discounted)
+    if variance_reduction == VarianceReduction.CONTROL_VARIATE:
+        # Control variate: re-simulate with CV logic
+        x_payoffs, mu_y, y_payoffs = _simulate_control_variate(
+            rng=rng,
+            spot=spot,
+            strike=strike,
+            maturity=maturity,
+            r=r,
+            q=q,
+            sigma=sigma,
+            n_steps=n_steps,
+            n_paths=n_paths,
+            option_type=option_type,
+            payoff_type=payoff_type,
+            discount=discount,
+            chunk_size=chunk_size,
+        )
+        stats = _compute_statistics_cv(x_payoffs, mu_y, y_payoffs)
+        payoff_mean_disc = stats["price"]
+    else:
+        stats = _compute_statistics(discounted)
 
     # --- Black-Scholes benchmark (European only) ---
     bs_price = None

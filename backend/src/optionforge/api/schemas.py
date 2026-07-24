@@ -17,7 +17,7 @@ class PricingRequest(BaseModel):
     n_steps: int = Field(default=252, ge=1, le=2_000, description="Time steps per path")
     option_type: str = Field(default="call", pattern="^(call|put)$")
     payoff_type: str = Field(default="european", pattern="^(european|asian)$")
-    variance_reduction: str = Field(default="none", pattern="^(none|antithetic)$")
+    variance_reduction: str = Field(default="none", pattern="^(none|antithetic|control_variate)$")
     seed: int | None = Field(default=None, description="Random seed for reproducibility")
 
     @model_validator(mode="after")

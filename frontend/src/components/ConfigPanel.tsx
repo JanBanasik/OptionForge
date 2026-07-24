@@ -128,7 +128,7 @@ export default function ConfigPanel({ params, onChange, onRun, loading }: Props)
           </h3>
           {field("Paths", "n_paths", "1000", 100, 500000)}
           {field("Time Steps", "n_steps", "1", 1, 2000)}
-          {select("Variance Reduction", "variance_reduction", ["none", "antithetic"])}
+          {select("Variance Reduction", "variance_reduction", ["none", "antithetic", "control_variate"])}
           <label className="block">
             <span className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-zinc-500">
               Seed
