@@ -113,3 +113,13 @@ class VolSurfaceResponse(BaseModel):
     maturities: list[float]
     iv_grid: list[list[float]]  # [n_maturities][n_strikes]
     spot: float
+
+class BenchmarkResponse(BaseModel):
+    cpu_ms: float
+    cpu_price: float
+    cpu_se: float
+    gpu_ms: float | None = None
+    gpu_price: float | None = None
+    gpu_se: float | None = None
+    speedup: float | None = None
+    n_paths: int

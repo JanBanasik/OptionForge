@@ -4,6 +4,7 @@ import ConfigPanel from "./components/ConfigPanel";
 import Charts from "./components/Charts";
 import GreeksDisplay from "./components/GreeksDisplay";
 import VolSurface from "./components/VolSurface";
+import Benchmark from "./components/Benchmark";
 import { fetchPrice, fetchVisualization } from "./api/client";
 import { useAnimatedValue } from "./hooks/useAnimatedValue";
 import type { PricingRequest, PricingResponse, VisualizationResponse } from "./types";
@@ -286,6 +287,7 @@ export default function App() {
 
         {/* Volatility Surface — always available */}
         <VolSurface />
+        <Benchmark />
       </main>
     </div>
   );

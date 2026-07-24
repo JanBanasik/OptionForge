@@ -4,6 +4,7 @@ import numpy as np
 from fastapi import APIRouter, HTTPException
 
 from optionforge.api.schemas import (
+    BenchmarkResponse,
     GreeksResponse,
     IVRequest,
     IVResponse,
@@ -217,3 +218,24 @@ def vol_surface(req: VolSurfaceRequest) -> VolSurfaceResponse:
         iv_grid=iv_grid,
         spot=req.spot,
     )
+
+
+@router.post("/benchmark", response_model=BenchmarkResponse)
+def benchmark(req: PricingRequest) -> BenchmarkResponse:
+    """CPU vs GPU Monte Carlo benchmark."""
+    from optionforge.pricing.gpu_simulation import run_benchmark
+
+    result = run_benchmark(
+        spot=req.spot,
+        strike=req.strike,
+        maturity=req.maturity,
+        r=req.risk_free_rate,
+        q=req.dividend_yield,
+        sigma=req.volatility,
+        n_steps=req.n_steps,
+        n_paths=req.n_paths,
+        option_type=req.option_type,
+        payoff_type=req.payoff_type,
+        seed=req.seed if req.seed else 42,
+    )
+    return BenchmarkResponse(**result)
