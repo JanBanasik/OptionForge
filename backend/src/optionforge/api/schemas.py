@@ -16,9 +16,11 @@ class PricingRequest(BaseModel):
     n_paths: int = Field(default=50_000, ge=100, le=500_000, description="Number of Monte Carlo paths")
     n_steps: int = Field(default=252, ge=1, le=2_000, description="Time steps per path")
     option_type: str = Field(default="call", pattern="^(call|put)$")
-    payoff_type: str = Field(default="european", pattern="^(european|asian)$")
+    payoff_type: str = Field(default="european", pattern="^(european|asian|barrier)$")
     variance_reduction: str = Field(default="none", pattern="^(none|antithetic|control_variate)$")
     seed: int | None = Field(default=None, description="Random seed for reproducibility")
+    barrier_type: str | None = Field(default=None, pattern="^(up_and_out|down_and_out|up_and_in|down_and_in)$")
+    barrier_level: float | None = Field(default=None, gt=0)
 
     @model_validator(mode="after")
     def validate_paths_steps(self) -> "PricingRequest":

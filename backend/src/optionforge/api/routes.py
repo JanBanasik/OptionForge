@@ -9,7 +9,7 @@ from optionforge.api.schemas import (
     PricingResponse,
     VisualizationResponse,
 )
-from optionforge.models.types import OptionType, PayoffType, VarianceReduction
+from optionforge.models.types import BarrierType, OptionType, PayoffType, VarianceReduction
 from optionforge.pricing.monte_carlo import generate_visualization_data, monte_carlo_price
 
 router = APIRouter(prefix="/api")
@@ -32,6 +32,8 @@ def price_option(req: PricingRequest) -> PricingResponse:
     option_type = _to_enum(req.option_type, OptionType)
     payoff_type = _to_enum(req.payoff_type, PayoffType)
     var_reduction = _to_enum(req.variance_reduction, VarianceReduction)
+    barrier_type = _to_enum(req.barrier_type, BarrierType) if req.barrier_type else None
+    barrier_level = req.barrier_level or 0.0
 
     seed = req.seed if req.seed is not None else np.random.default_rng().integers(0, 2**31)
     rng = np.random.default_rng(seed)
@@ -49,6 +51,8 @@ def price_option(req: PricingRequest) -> PricingResponse:
         option_type=option_type,
         payoff_type=payoff_type,
         variance_reduction=var_reduction,
+        barrier_type=barrier_type,
+        barrier_level=barrier_level,
     )
 
     return PricingResponse(
@@ -84,6 +88,8 @@ def visualization_data(req: PricingRequest) -> VisualizationResponse:
     option_type = _to_enum(req.option_type, OptionType)
     payoff_type = _to_enum(req.payoff_type, PayoffType)
     var_reduction = _to_enum(req.variance_reduction, VarianceReduction)
+    barrier_type = _to_enum(req.barrier_type, BarrierType) if req.barrier_type else None
+    barrier_level = req.barrier_level or 0.0
 
     seed = req.seed if req.seed is not None else np.random.default_rng().integers(0, 2**31)
     rng = np.random.default_rng(seed)
@@ -101,6 +107,8 @@ def visualization_data(req: PricingRequest) -> VisualizationResponse:
         option_type=option_type,
         payoff_type=payoff_type,
         variance_reduction=var_reduction,
+        barrier_type=barrier_type,
+        barrier_level=barrier_level,
     )
 
     return VisualizationResponse(

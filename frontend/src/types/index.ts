@@ -16,9 +16,11 @@ export interface PricingRequest {
   n_paths: number;
   n_steps: number;
   option_type: "call" | "put";
-  payoff_type: "european" | "asian";
+  payoff_type: "european" | "asian" | "barrier";
   variance_reduction: "none" | "antithetic" | "control_variate";
   seed?: number;
+  barrier_type?: "up_and_out" | "down_and_out" | "up_and_in" | "down_and_in";
+  barrier_level?: number;
 }
 
 export interface PricingResponse {

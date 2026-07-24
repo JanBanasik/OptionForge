@@ -39,7 +39,7 @@ export default function ConfigPanel({ params, onChange, onRun, loading }: Props)
         step={step}
         min={min}
         max={max}
-        value={params[key] as number}
+        value={params[key] ?? ""}
         onChange={(e) => {
           const v = parseFloat(e.target.value);
           if (!isNaN(v)) set({ [key]: v });
@@ -119,8 +119,23 @@ export default function ConfigPanel({ params, onChange, onRun, loading }: Props)
             Contract
           </h3>
           {select("Option Type", "option_type", ["call", "put"])}
-          {select("Payoff Style", "payoff_type", ["european", "asian"])}
+          {select("Payoff Style", "payoff_type", ["european", "asian", "barrier"])}
         </div>
+
+        {params.payoff_type === "barrier" && (
+          <div className="space-y-3">
+            <h3 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-600">
+              Barrier
+            </h3>
+            {select("Barrier Type", "barrier_type" as keyof PricingRequest, [
+              "up_and_out",
+              "down_and_out",
+              "up_and_in",
+              "down_and_in",
+            ])}
+            {field("Barrier Level", "barrier_level" as keyof PricingRequest, "0.1", 0.01)}
+          </div>
+        )}
 
         <div className="space-y-3">
           <h3 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-600">

@@ -5,6 +5,7 @@ from numpy.random import Generator
 
 from optionforge.models.payoffs import compute_payoff
 from optionforge.models.types import (
+    BarrierType,
     OptionType,
     PayoffType,
     PricingResult,
@@ -27,6 +28,8 @@ def _simulate_standard(
     payoff_type: PayoffType,
     discount: float,
     chunk_size: int,
+    barrier_type: BarrierType | None = None,
+    barrier_level: float = 0.0,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Standard Monte Carlo: generate paths and compute discounted payoffs."""
     dt = maturity / n_steps
@@ -50,7 +53,10 @@ def _simulate_standard(
             increments = np.exp(drift + vol * z)
             paths[start:end, 1:] = spot * np.cumprod(increments, axis=1)
 
-    undiscounted = compute_payoff(paths, strike, option_type, payoff_type)
+    undiscounted = compute_payoff(
+        paths, strike, option_type, payoff_type,
+        barrier_type=barrier_type, barrier_level=barrier_level,
+    )
     discounted = discount * undiscounted
     return paths, discounted
 
@@ -69,6 +75,8 @@ def _simulate_antithetic_chunked(
     payoff_type: PayoffType,
     discount: float,
     chunk_size: int,
+    barrier_type: BarrierType | None = None,
+    barrier_level: float = 0.0,
 ) -> np.ndarray:
     """
     Antithetic variates simulation.
@@ -101,8 +109,14 @@ def _simulate_antithetic_chunked(
         anti_paths[:, 0] = spot
         anti_paths[:, 1:] = spot * np.cumprod(anti_inc, axis=1)
 
-        reg_disc = discount * compute_payoff(reg_paths, strike, option_type, payoff_type)
-        anti_disc = discount * compute_payoff(anti_paths, strike, option_type, payoff_type)
+        reg_disc = discount * compute_payoff(
+            reg_paths, strike, option_type, payoff_type,
+            barrier_type=barrier_type, barrier_level=barrier_level,
+        )
+        anti_disc = discount * compute_payoff(
+            anti_paths, strike, option_type, payoff_type,
+            barrier_type=barrier_type, barrier_level=barrier_level,
+        )
         averaged = 0.5 * (reg_disc + anti_disc)
     else:
         n_chunks = (n_pairs + chunk_size - 1) // chunk_size
@@ -123,8 +137,14 @@ def _simulate_antithetic_chunked(
             anti_paths[:, 0] = spot
             anti_paths[:, 1:] = spot * np.cumprod(anti_inc, axis=1)
 
-            reg_disc = discount * compute_payoff(reg_paths, strike, option_type, payoff_type)
-            anti_disc = discount * compute_payoff(anti_paths, strike, option_type, payoff_type)
+            reg_disc = discount * compute_payoff(
+                reg_paths, strike, option_type, payoff_type,
+                barrier_type=barrier_type, barrier_level=barrier_level,
+            )
+            anti_disc = discount * compute_payoff(
+                anti_paths, strike, option_type, payoff_type,
+                barrier_type=barrier_type, barrier_level=barrier_level,
+            )
             averaged[start:end] = 0.5 * (reg_disc + anti_disc)
 
     return averaged
@@ -144,6 +164,8 @@ def _simulate_control_variate(
     payoff_type: PayoffType,
     discount: float,
     chunk_size: int,
+    barrier_type: BarrierType | None = None,
+    barrier_level: float = 0.0,
 ) -> tuple[np.ndarray, float, float]:
     """
     Control variate simulation.
@@ -275,6 +297,8 @@ def monte_carlo_price(
     variance_reduction: VarianceReduction,
     compute_greeks_flag: bool = True,
     chunk_size: int = 50_000,
+    barrier_type: BarrierType | None = None,
+    barrier_level: float = 0.0,
 ) -> PricingResult:
     """
     Price an option via Monte Carlo simulation.
@@ -320,6 +344,8 @@ def monte_carlo_price(
             payoff_type=payoff_type,
             discount=discount,
             chunk_size=chunk_size,
+            barrier_type=barrier_type,
+            barrier_level=barrier_level,
         )
         payoff_mean_disc = float(np.mean(discounted))
     else:
@@ -337,6 +363,8 @@ def monte_carlo_price(
             payoff_type=payoff_type,
             discount=discount,
             chunk_size=chunk_size,
+            barrier_type=barrier_type,
+            barrier_level=barrier_level,
         )
         payoff_mean_disc = float(np.mean(discounted))
 
@@ -356,6 +384,8 @@ def monte_carlo_price(
             payoff_type=payoff_type,
             discount=discount,
             chunk_size=chunk_size,
+            barrier_type=barrier_type,
+            barrier_level=barrier_level,
         )
         stats = _compute_statistics_cv(x_payoffs, mu_y, y_payoffs)
         payoff_mean_disc = stats["price"]
@@ -423,6 +453,8 @@ def generate_convergence_data(
     payoff_type: PayoffType,
     variance_reduction: VarianceReduction,
     num_points: int = 40,
+    barrier_type: BarrierType | None = None,
+    barrier_level: float = 0.0,
 ) -> list[dict]:
     """
     Generate convergence series showing how the price estimate and CI
@@ -509,6 +541,8 @@ def generate_visualization_data(
     option_type: OptionType,
     payoff_type: PayoffType,
     variance_reduction: VarianceReduction,
+    barrier_type: BarrierType | None = None,
+    barrier_level: float = 0.0,
 ) -> dict:
     """
     Generate visualization data: sampled paths, histograms, convergence,
