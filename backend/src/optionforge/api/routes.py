@@ -5,11 +5,14 @@ from fastapi import APIRouter, HTTPException
 
 from optionforge.api.schemas import (
     GreeksResponse,
+    IVRequest,
+    IVResponse,
     PricingRequest,
     PricingResponse,
     VisualizationResponse,
 )
 from optionforge.models.types import BarrierType, OptionType, PayoffType, VarianceReduction
+from optionforge.pricing.black_scholes import implied_volatility
 from optionforge.pricing.monte_carlo import generate_visualization_data, monte_carlo_price
 
 router = APIRouter(prefix="/api")
@@ -122,3 +125,19 @@ def visualization_data(req: PricingRequest) -> VisualizationResponse:
         greeks=GreeksResponse(**data["greeks"]) if data["greeks"] else None,
         bs_greeks=GreeksResponse(**data["bs_greeks"]) if data["bs_greeks"] else None,
     )
+
+
+@router.post("/iv", response_model=IVResponse)
+def compute_iv(req: IVRequest) -> IVResponse:
+    """Compute implied volatility from market price via Newton-Raphson."""
+    option_type = _to_enum(req.option_type, OptionType)
+    result = implied_volatility(
+        market_price=req.market_price,
+        spot=req.spot,
+        strike=req.strike,
+        maturity=req.maturity,
+        r=req.risk_free_rate,
+        q=req.dividend_yield,
+        option_type=option_type,
+    )
+    return IVResponse(**result)

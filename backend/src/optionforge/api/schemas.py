@@ -68,3 +68,21 @@ class VisualizationResponse(BaseModel):
     convergence: list[ConvergencePointResponse]
     greeks: GreeksResponse | None = None
     bs_greeks: GreeksResponse | None = None
+
+
+class IVRequest(BaseModel):
+    """Request for implied volatility calculation."""
+
+    market_price: float = Field(gt=0, description="Observed market price of the option")
+    spot: float = Field(gt=0, description="Current asset price")
+    strike: float = Field(gt=0, description="Option strike price")
+    maturity: float = Field(gt=0, description="Time to maturity in years")
+    risk_free_rate: float = Field(ge=0, description="Risk-free interest rate")
+    dividend_yield: float = Field(ge=0, description="Continuous dividend yield")
+    option_type: str = Field(pattern="^(call|put)$")
+
+
+class IVResponse(BaseModel):
+    implied_volatility: float
+    iterations: int | None = None
+    price_error: float | None = None

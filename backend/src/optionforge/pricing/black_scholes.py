@@ -95,3 +95,76 @@ def black_scholes_greeks(
     rho = strike * maturity * discount * _norm_cdf(d2) * 0.01
 
     return Greeks(delta=delta, gamma=gamma, vega=vega, theta=theta, rho=rho)
+
+
+def implied_volatility(
+    market_price: float,
+    spot: float,
+    strike: float,
+    maturity: float,
+    r: float,
+    q: float,
+    option_type: OptionType,
+    initial_guess: float = 0.3,
+    tolerance: float = 1e-8,
+    max_iterations: int = 100,
+) -> dict:
+    """
+    Compute implied volatility via Newton-Raphson.
+
+    Returns dict: {implied_volatility, iterations, price_error}.
+    Typical convergence in 3–5 iterations.
+    """
+    result = {"implied_volatility": 0.0, "iterations": 0, "price_error": None}
+
+    if maturity <= 0.0:
+        return result
+
+    discount = np.exp(-r * maturity)
+    forward = spot * np.exp(-q * maturity)
+
+    if option_type == OptionType.CALL:
+        intrinsic = max(spot - strike * discount, 0.0)
+    else:
+        intrinsic = max(strike * discount - spot, 0.0)
+
+    if market_price <= intrinsic:
+        return result
+
+    sigma = initial_guess
+
+    for i in range(max_iterations):
+        if sigma <= 1e-10:
+            sigma = 1e-4
+
+        sqrt_t = np.sqrt(maturity)
+        d1 = (np.log(spot / strike) + (r - q + 0.5 * sigma**2) * maturity) / (sigma * sqrt_t)
+        d2 = d1 - sigma * sqrt_t
+
+        if option_type == OptionType.CALL:
+            price = forward * _norm_cdf(d1) - strike * discount * _norm_cdf(d2)
+        else:
+            price = strike * discount * _norm_cdf(-d2) - forward * _norm_cdf(-d1)
+
+        diff = price - market_price
+
+        if abs(diff) < tolerance:
+            result["implied_volatility"] = float(sigma)
+            result["iterations"] = i + 1
+            result["price_error"] = float(diff)
+            return result
+
+        vega_raw = spot * np.exp(-q * maturity) * _norm_pdf(d1) * sqrt_t
+
+        if vega_raw < 1e-16:
+            break
+
+        sigma = sigma - diff / vega_raw
+
+        if sigma <= 0.0:
+            sigma = 1e-4
+
+    if sigma > 1e-6:
+        result["implied_volatility"] = float(sigma)
+        result["iterations"] = max_iterations
+    return result
