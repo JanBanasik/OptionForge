@@ -23,25 +23,21 @@ const defaults: PricingRequest = {
   variance_reduction: "none",
 };
 
+type Tab = "pricing" | "vol-surface" | "benchmark";
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: "pricing", label: "Pricing" },
+  { key: "vol-surface", label: "Vol Surface" },
+  { key: "benchmark", label: "GPU Benchmark" },
+];
+
 /* ── Animated metric card ── */
 function MetricCard({
-  label,
-  value,
-  suffix = "",
-  precision = 4,
-  highlight = false,
-  delay = 0,
+  label, value, suffix = "", precision = 4, highlight = false, delay = 0,
 }: {
-  label: string;
-  value: number;
-  suffix?: string;
-  precision?: number;
-  highlight?: boolean;
-  delay?: number;
+  label: string; value: number; suffix?: string; precision?: number; highlight?: boolean; delay?: number;
 }) {
   const animated = useAnimatedValue(value, 500);
-  const display = animated.toFixed(precision);
-
   return (
     <div
       className="animate-fade-up group relative overflow-hidden rounded-xl border px-4 py-3.5 transition-all duration-300 hover:border-zinc-600"
@@ -53,24 +49,15 @@ function MetricCard({
         borderColor: highlight ? "rgba(6,182,212,0.3)" : "rgba(39,39,42,0.6)",
       }}
     >
-      <div className="mb-0.5 text-[11px] font-medium uppercase tracking-widest text-zinc-500">
-        {label}
-      </div>
-      <div
-        className={`font-mono text-lg font-semibold tracking-tight tabular-nums ${
-          highlight ? "text-cyan-300" : "text-zinc-100"
-        }`}
-      >
-        {display}
-        {suffix && (
-          <span className="ml-1 text-xs font-normal text-zinc-500">{suffix}</span>
-        )}
+      <div className="mb-0.5 text-[11px] font-medium uppercase tracking-widest text-zinc-500">{label}</div>
+      <div className={`font-mono text-lg font-semibold tracking-tight tabular-nums ${highlight ? "text-cyan-300" : "text-zinc-100"}`}>
+        {animated.toFixed(precision)}
+        {suffix && <span className="ml-1 text-xs font-normal text-zinc-500">{suffix}</span>}
       </div>
     </div>
   );
 }
 
-/* ── Loading skeleton card ── */
 function SkeletonCard() {
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 px-4 py-3.5">
@@ -80,7 +67,6 @@ function SkeletonCard() {
   );
 }
 
-/* ── Empty state ── */
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -91,28 +77,23 @@ function EmptyState() {
       </div>
       <p className="text-sm font-medium text-zinc-400">Configure parameters</p>
       <p className="mt-1 text-xs text-zinc-600">
-        Adjust the settings on the left and click <span className="font-semibold text-cyan-500">Run Simulation</span>
+        Adjust settings on the left and click <span className="font-semibold text-cyan-500">Run Simulation</span>
       </p>
     </div>
   );
 }
 
-/* ── Loading state ── */
 function LoadingState() {
   return (
     <div className="space-y-5 animate-fade-up">
-      {/* Skeleton metric cards */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <SkeletonCard key={i} />
-        ))}
+        {Array.from({ length: 6 }).map((_, i) => (<SkeletonCard key={i} />))}
       </div>
-      {/* Skeleton chart containers */}
       <div className="space-y-4">
         {[350, 280, 320].map((h, i) => (
           <div key={i} className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-5">
             <div className="skeleton mb-4 h-3 w-32" />
-            <div className={`skeleton w-full rounded-lg`} style={{ height: h }} />
+            <div className="skeleton w-full rounded-lg" style={{ height: h }} />
           </div>
         ))}
       </div>
@@ -123,6 +104,7 @@ function LoadingState() {
 export default function App() {
   const [params, setParams] = useState<PricingRequest>(defaults);
   const [run, setRun] = useState(0);
+  const [tab, setTab] = useState<Tab>("pricing");
 
   const priceQuery = useQuery<PricingResponse>({
     queryKey: ["price", params, run],
@@ -142,14 +124,12 @@ export default function App() {
 
   const handleRun = useCallback(() => {
     setRun((r) => r + 1);
+    setTab("pricing"); // switch to pricing tab on run
   }, []);
 
-  // Ctrl+Enter shortcut
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-        handleRun();
-      }
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") handleRun();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -172,122 +152,85 @@ export default function App() {
       />
 
       {/* ── Main content ── */}
-      <main className="flex-1 overflow-y-auto px-6 py-6">
-        <div className="mx-auto max-w-5xl space-y-5">
-          {/* Error banner */}
-          {error && (
-            <div className="animate-fade-up rounded-xl border border-red-800/50 bg-red-950/30 px-4 py-3">
-              <p className="text-sm text-red-400">{(error as Error).message}</p>
+      <main className="flex flex-1 flex-col overflow-hidden">
+        {/* Tab bar */}
+        <nav className="flex shrink-0 items-center gap-1 border-b border-zinc-800/60 px-6 pt-4">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`relative px-4 pb-3 pt-2 text-xs font-semibold uppercase tracking-widest transition-colors ${
+                tab === t.key
+                  ? "text-cyan-300"
+                  : "text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              {t.label}
+              {tab === t.key && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-cyan-500" />
+              )}
+            </button>
+          ))}
+        </nav>
+
+        {/* Tab content */}
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          {tab === "pricing" && (
+            <div className="mx-auto max-w-5xl space-y-5">
+              {error && (
+                <div className="animate-fade-up rounded-xl border border-red-800/50 bg-red-950/30 px-4 py-3">
+                  <p className="text-sm text-red-400">{(error as Error).message}</p>
+                </div>
+              )}
+              {!hasRun && !isLoading && <EmptyState />}
+              {isLoading && <LoadingState />}
+              {priceData && !isLoading && (
+                <div className="space-y-5">
+                  <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+                    <MetricCard label="MC Price" value={priceData.price} highlight delay={0} />
+                    <MetricCard label="BS Price" value={priceData.black_scholes_price ?? 0} delay={60} />
+                    <MetricCard label="Abs Error" value={priceData.absolute_error ?? 0} precision={6} delay={120} />
+                    <MetricCard label="Rel Error" value={(priceData.relative_error ?? 0) * 100} suffix="%" precision={4} delay={180} />
+                    <MetricCard label="Std Error" value={priceData.standard_error} precision={6} delay={240} />
+                    <MetricCard label="95% CI" value={priceData.confidence_interval_upper - priceData.confidence_interval_lower} precision={4} delay={300} />
+                  </div>
+                  <div className="animate-fade-up rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3" style={{ animationDelay: "120ms" }}>
+                    <div className="flex items-center gap-3 text-sm">
+                      <span className="text-zinc-500">95% CI:</span>
+                      <span className="font-mono tabular-nums text-zinc-300">
+                        [{priceData.confidence_interval_lower.toFixed(6)}, {priceData.confidence_interval_upper.toFixed(6)}]
+                      </span>
+                      {priceData.black_scholes_price !== null && (
+                        <>
+                          <span className="text-zinc-600">|</span>
+                          <span className="text-zinc-500">BS: <span className="font-mono text-purple-400">{priceData.black_scholes_price.toFixed(6)}</span></span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="animate-fade-up rounded-xl border border-zinc-800 bg-zinc-900/40 p-5" style={{ animationDelay: "180ms" }}>
+                    <h3 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Greeks</h3>
+                    <GreeksDisplay greeks={priceData.greeks} label="Monte Carlo" color="cyan" delay={0} />
+                    {priceData.bs_greeks && <GreeksDisplay greeks={priceData.bs_greeks} label="Black-Scholes" color="purple" delay={200} />}
+                  </div>
+                  {vizData && <Charts data={vizData} />}
+                </div>
+              )}
             </div>
           )}
 
-          {/* Empty state */}
-          {!hasRun && !isLoading && <EmptyState />}
+          {tab === "vol-surface" && (
+            <div className="mx-auto max-w-5xl">
+              <VolSurface />
+            </div>
+          )}
 
-          {/* Loading */}
-          {isLoading && <LoadingState />}
-
-          {/* Results */}
-          {priceData && !isLoading && (
-            <div className="space-y-5">
-              {/* Metrics row */}
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-                <MetricCard
-                  label="MC Price"
-                  value={priceData.price}
-                  highlight
-                  delay={0}
-                />
-                <MetricCard
-                  label="BS Price"
-                  value={priceData.black_scholes_price ?? 0}
-                  delay={60}
-                />
-                <MetricCard
-                  label="Abs Error"
-                  value={priceData.absolute_error ?? 0}
-                  precision={6}
-                  delay={120}
-                />
-                <MetricCard
-                  label="Rel Error"
-                  value={(priceData.relative_error ?? 0) * 100}
-                  suffix="%"
-                  precision={4}
-                  delay={180}
-                />
-                <MetricCard
-                  label="Std Error"
-                  value={priceData.standard_error}
-                  precision={6}
-                  delay={240}
-                />
-                <MetricCard
-                  label="95% CI"
-                  value={priceData.confidence_interval_upper - priceData.confidence_interval_lower}
-                  precision={4}
-                  delay={300}
-                />
-              </div>
-
-              {/* CI detail */}
-              <div
-                className="animate-fade-up rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3"
-                style={{ animationDelay: "120ms" }}
-              >
-                <div className="flex items-center gap-3 text-sm">
-                  <span className="text-zinc-500">95% confidence interval:</span>
-                  <span className="font-mono tabular-nums text-zinc-300">
-                    [{priceData.confidence_interval_lower.toFixed(6)},{" "}
-                    {priceData.confidence_interval_upper.toFixed(6)}]
-                  </span>
-                  {priceData.black_scholes_price !== null && (
-                    <>
-                      <span className="text-zinc-600">|</span>
-                      <span className="text-zinc-500">
-                        BS:{" "}
-                        <span className="font-mono text-purple-400">
-                          {priceData.black_scholes_price.toFixed(6)}
-                        </span>
-                      </span>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Greeks */}
-              <div
-                className="animate-fade-up rounded-xl border border-zinc-800 bg-zinc-900/40 p-5"
-                style={{ animationDelay: "180ms" }}
-              >
-                <h3 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                  Greeks
-                </h3>
-                <GreeksDisplay
-                  greeks={priceData.greeks}
-                  label="Monte Carlo"
-                  color="cyan"
-                  delay={0}
-                />
-                {priceData.bs_greeks && (
-                  <GreeksDisplay
-                    greeks={priceData.bs_greeks}
-                    label="Black-Scholes"
-                    color="purple"
-                    delay={200}
-                  />
-                )}
-              </div>
-
-              {/* Charts */}
-              {vizData && <Charts data={vizData} />}
+          {tab === "benchmark" && (
+            <div className="mx-auto max-w-5xl">
+              <Benchmark />
             </div>
           )}
         </div>
-
-        {/* Volatility Surface — always available */}
-        <VolSurface />
-        <Benchmark />
       </main>
     </div>
   );
