@@ -52,7 +52,7 @@ export default function GreeksDisplay({ greeks, label, color, delay = 0 }: Props
           return (
             <div
               key={name}
-              className="group relative rounded-lg border px-3 py-2.5 text-center transition-all duration-200 hover:-translate-y-0.5"
+              className="group relative rounded-lg border px-3 py-2.5 text-center transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_0_10px_rgba(6,182,212,0.05)]"
               style={{
                 borderColor: c.border,
                 backgroundColor: c.bg,

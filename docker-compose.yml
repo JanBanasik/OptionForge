@@ -8,6 +8,13 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 
   frontend:
     build:

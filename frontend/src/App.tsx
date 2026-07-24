@@ -40,7 +40,7 @@ function MetricCard({
   const animated = useAnimatedValue(value, 500);
   return (
     <div
-      className="animate-fade-up group relative overflow-hidden rounded-xl border px-4 py-3.5 transition-all duration-300 hover:border-zinc-600"
+      className="animate-fade-up group relative overflow-hidden rounded-xl border px-4 py-3.5 transition-all duration-300 hover:border-zinc-500 hover:shadow-[0_0_12px_rgba(6,182,212,0.06)]"
       style={{
         animationDelay: `${delay}ms`,
         background: highlight
@@ -194,7 +194,7 @@ export default function App() {
                     <MetricCard label="Std Error" value={priceData.standard_error} precision={6} delay={240} />
                     <MetricCard label="95% CI" value={priceData.confidence_interval_upper - priceData.confidence_interval_lower} precision={4} delay={300} />
                   </div>
-                  <div className="animate-fade-up rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3" style={{ animationDelay: "120ms" }}>
+                  <div className="animate-fade-up rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3 transition-all duration-300 hover:border-zinc-700 hover:shadow-[0_0_10px_rgba(6,182,212,0.04)]" style={{ animationDelay: "120ms" }}>
                     <div className="flex items-center gap-3 text-sm">
                       <span className="text-zinc-500">95% CI:</span>
                       <span className="font-mono tabular-nums text-zinc-300">
