@@ -139,6 +139,26 @@ export default function ConfigPanel({ params, onChange, onRun, loading }: Props)
 
         <div className="space-y-3">
           <h3 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-600">
+            Model
+          </h3>
+          {select("Model Type", "model_type" as keyof PricingRequest, ["gbm", "heston"])}
+        </div>
+
+        {params.model_type === "heston" && (
+          <div className="space-y-3">
+            <h3 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-600">
+              Heston Params
+            </h3>
+            {field("κ (mean rev.)", "heston_kappa" as keyof PricingRequest, "0.1", 0.1)}
+            {field("θ (long var.)", "heston_theta" as keyof PricingRequest, "0.01", 0.01)}
+            {field("ξ (vol of vol)", "heston_xi" as keyof PricingRequest, "0.01", 0.01)}
+            {field("ρ (correlation)", "heston_rho" as keyof PricingRequest, "0.01", -1, 1)}
+            {field("v₀ (init var.)", "heston_v0" as keyof PricingRequest, "0.01", 0.01)}
+          </div>
+        )}
+
+        <div className="space-y-3">
+          <h3 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-600">
             Simulation
           </h3>
           {field("Paths", "n_paths", "1000", 100, 500000)}

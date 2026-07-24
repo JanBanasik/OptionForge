@@ -4,8 +4,11 @@ import numpy as np
 from numpy.random import Generator
 
 from optionforge.models.payoffs import compute_payoff
+from optionforge.models.stochastic import simulate_heston_paths
 from optionforge.models.types import (
     BarrierType,
+    HestonParams,
+    ModelType,
     OptionType,
     PayoffType,
     PricingResult,
@@ -59,6 +62,36 @@ def _simulate_standard(
     )
     discounted = discount * undiscounted
     return paths, discounted
+
+
+def _simulate_heston(
+    rng: Generator,
+    spot: float,
+    strike: float,
+    maturity: float,
+    r: float,
+    q: float,
+    n_steps: int,
+    n_paths: int,
+    option_type: OptionType,
+    payoff_type: PayoffType,
+    heston: HestonParams,
+    discount: float,
+    barrier_type: BarrierType | None = None,
+    barrier_level: float = 0.0,
+) -> np.ndarray:
+    """Heston model: simulate paths and compute discounted payoffs."""
+    paths, _variance = simulate_heston_paths(
+        rng=rng, spot=spot, r=r, q=q, maturity=maturity,
+        n_steps=n_steps, n_paths=n_paths,
+        kappa=heston.kappa, theta=heston.theta,
+        xi=heston.xi, rho=heston.rho, v0=heston.v0,
+    )
+    undiscounted = compute_payoff(
+        paths, strike, option_type, payoff_type,
+        barrier_type=barrier_type, barrier_level=barrier_level,
+    )
+    return discount * undiscounted
 
 
 def _simulate_antithetic_chunked(
@@ -299,6 +332,8 @@ def monte_carlo_price(
     chunk_size: int = 50_000,
     barrier_type: BarrierType | None = None,
     barrier_level: float = 0.0,
+    model_type: ModelType = ModelType.GBM,
+    heston_params: HestonParams | None = None,
 ) -> PricingResult:
     """
     Price an option via Monte Carlo simulation.
@@ -327,7 +362,18 @@ def monte_carlo_price(
     discount = np.exp(-r * maturity)
 
     # --- Simulate ---
-    if variance_reduction == VarianceReduction.ANTITHETIC:
+    if model_type == ModelType.HESTON and heston_params is not None:
+        discounted = _simulate_heston(
+            rng=rng, spot=spot, strike=strike, maturity=maturity,
+            r=r, q=q, n_steps=n_steps, n_paths=n_paths,
+            option_type=option_type, payoff_type=payoff_type,
+            heston=heston_params, discount=discount,
+            barrier_type=barrier_type, barrier_level=barrier_level,
+        )
+        payoff_mean_disc = float(np.mean(discounted))
+        stats = _compute_statistics(discounted)
+        compute_greeks_flag = False
+    elif variance_reduction == VarianceReduction.ANTITHETIC:
         # Generate n_paths/2 pairs of (Z, −Z), each averaged → n_paths/2 estimates
         n_pairs = max(n_paths // 2, 1)
         discounted = _simulate_antithetic_chunked(
@@ -455,6 +501,8 @@ def generate_convergence_data(
     num_points: int = 40,
     barrier_type: BarrierType | None = None,
     barrier_level: float = 0.0,
+    model_type: ModelType = ModelType.GBM,
+    heston_params: HestonParams | None = None,
 ) -> list[dict]:
     """
     Generate convergence series showing how the price estimate and CI
@@ -543,6 +591,8 @@ def generate_visualization_data(
     variance_reduction: VarianceReduction,
     barrier_type: BarrierType | None = None,
     barrier_level: float = 0.0,
+    model_type: ModelType = ModelType.GBM,
+    heston_params: HestonParams | None = None,
 ) -> dict:
     """
     Generate visualization data: sampled paths, histograms, convergence,

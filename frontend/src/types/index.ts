@@ -21,6 +21,12 @@ export interface PricingRequest {
   seed?: number;
   barrier_type?: "up_and_out" | "down_and_out" | "up_and_in" | "down_and_in";
   barrier_level?: number;
+  model_type?: "gbm" | "heston";
+  heston_kappa?: number;
+  heston_theta?: number;
+  heston_xi?: number;
+  heston_rho?: number;
+  heston_v0?: number;
 }
 
 export interface PricingResponse {

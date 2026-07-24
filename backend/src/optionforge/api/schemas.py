@@ -21,6 +21,12 @@ class PricingRequest(BaseModel):
     seed: int | None = Field(default=None, description="Random seed for reproducibility")
     barrier_type: str | None = Field(default=None, pattern="^(up_and_out|down_and_out|up_and_in|down_and_in)$")
     barrier_level: float | None = Field(default=None, gt=0)
+    model_type: str = Field(default="gbm", pattern="^(gbm|heston)$")
+    heston_kappa: float | None = Field(default=None, gt=0)
+    heston_theta: float | None = Field(default=None, gt=0)
+    heston_xi: float | None = Field(default=None, gt=0)
+    heston_rho: float | None = Field(default=None, ge=-1, le=1)
+    heston_v0: float | None = Field(default=None, gt=0)
 
     @model_validator(mode="after")
     def validate_paths_steps(self) -> "PricingRequest":

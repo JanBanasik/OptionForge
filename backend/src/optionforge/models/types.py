@@ -28,6 +28,22 @@ class VarianceReduction(Enum):
     CONTROL_VARIATE = "control_variate"
 
 
+class ModelType(Enum):
+    GBM = "gbm"
+    HESTON = "heston"
+
+
+@dataclass
+class HestonParams:
+    """Heston stochastic volatility model parameters."""
+
+    kappa: float  # mean-reversion speed (>0)
+    theta: float  # long-run variance (>0)
+    xi: float     # volatility of variance (>0)
+    rho: float    # correlation (-1 to 1)
+    v0: float     # initial variance (>0)
+
+
 @dataclass
 class Greeks:
     delta: float

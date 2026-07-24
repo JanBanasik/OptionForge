@@ -13,7 +13,14 @@ from optionforge.api.schemas import (
     VolSurfaceRequest,
     VolSurfaceResponse,
 )
-from optionforge.models.types import BarrierType, OptionType, PayoffType, VarianceReduction
+from optionforge.models.types import (
+    BarrierType,
+    HestonParams,
+    ModelType,
+    OptionType,
+    PayoffType,
+    VarianceReduction,
+)
 from optionforge.pricing.black_scholes import black_scholes_price, implied_volatility
 from optionforge.pricing.monte_carlo import generate_visualization_data, monte_carlo_price
 
@@ -39,6 +46,16 @@ def price_option(req: PricingRequest) -> PricingResponse:
     var_reduction = _to_enum(req.variance_reduction, VarianceReduction)
     barrier_type = _to_enum(req.barrier_type, BarrierType) if req.barrier_type else None
     barrier_level = req.barrier_level or 0.0
+    model_type = _to_enum(req.model_type, ModelType)
+    heston = None
+    if model_type == ModelType.HESTON:
+        heston = HestonParams(
+            kappa=req.heston_kappa or 2.0,
+            theta=req.heston_theta or 0.04,
+            xi=req.heston_xi or 0.3,
+            rho=req.heston_rho or -0.7,
+            v0=req.heston_v0 or 0.04,
+        )
 
     seed = req.seed if req.seed is not None else np.random.default_rng().integers(0, 2**31)
     rng = np.random.default_rng(seed)
@@ -58,6 +75,8 @@ def price_option(req: PricingRequest) -> PricingResponse:
         variance_reduction=var_reduction,
         barrier_type=barrier_type,
         barrier_level=barrier_level,
+        model_type=model_type,
+        heston_params=heston,
     )
 
     return PricingResponse(
@@ -95,6 +114,16 @@ def visualization_data(req: PricingRequest) -> VisualizationResponse:
     var_reduction = _to_enum(req.variance_reduction, VarianceReduction)
     barrier_type = _to_enum(req.barrier_type, BarrierType) if req.barrier_type else None
     barrier_level = req.barrier_level or 0.0
+    model_type_viz = _to_enum(req.model_type, ModelType)
+    heston_viz = None
+    if model_type_viz == ModelType.HESTON:
+        heston_viz = HestonParams(
+            kappa=req.heston_kappa or 2.0,
+            theta=req.heston_theta or 0.04,
+            xi=req.heston_xi or 0.3,
+            rho=req.heston_rho or -0.7,
+            v0=req.heston_v0 or 0.04,
+        )
 
     seed = req.seed if req.seed is not None else np.random.default_rng().integers(0, 2**31)
     rng = np.random.default_rng(seed)
@@ -114,6 +143,8 @@ def visualization_data(req: PricingRequest) -> VisualizationResponse:
         variance_reduction=var_reduction,
         barrier_type=barrier_type,
         barrier_level=barrier_level,
+        model_type=model_type_viz,
+        heston_params=heston_viz,
     )
 
     return VisualizationResponse(
