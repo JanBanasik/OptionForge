@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import ConfigPanel from "./components/ConfigPanel";
 import Charts from "./components/Charts";
 import GreeksDisplay from "./components/GreeksDisplay";
+import VolSurface from "./components/VolSurface";
 import { fetchPrice, fetchVisualization } from "./api/client";
 import { useAnimatedValue } from "./hooks/useAnimatedValue";
 import type { PricingRequest, PricingResponse, VisualizationResponse } from "./types";
@@ -282,6 +283,9 @@ export default function App() {
             </div>
           )}
         </div>
+
+        {/* Volatility Surface — always available */}
+        <VolSurface />
       </main>
     </div>
   );

@@ -10,9 +10,11 @@ from optionforge.api.schemas import (
     PricingRequest,
     PricingResponse,
     VisualizationResponse,
+    VolSurfaceRequest,
+    VolSurfaceResponse,
 )
 from optionforge.models.types import BarrierType, OptionType, PayoffType, VarianceReduction
-from optionforge.pricing.black_scholes import implied_volatility
+from optionforge.pricing.black_scholes import black_scholes_price, implied_volatility
 from optionforge.pricing.monte_carlo import generate_visualization_data, monte_carlo_price
 
 router = APIRouter(prefix="/api")
@@ -141,3 +143,46 @@ def compute_iv(req: IVRequest) -> IVResponse:
         option_type=option_type,
     )
     return IVResponse(**result)
+
+
+@router.post("/vol-surface", response_model=VolSurfaceResponse)
+def vol_surface(req: VolSurfaceRequest) -> VolSurfaceResponse:
+    """Generate volatility surface from a parameterized smile."""
+    import numpy as np
+
+    strikes = np.linspace(
+        req.spot * 0.7, req.spot * 1.3, req.n_strikes
+    ).tolist()
+    maturities = np.linspace(0.1, 3.0, req.n_maturities).tolist()
+
+    iv_grid: list[list[float]] = []
+
+    for maturity in maturities:
+        row: list[float] = []
+        for strike in strikes:
+            moneyness = strike / req.spot - 1.0
+            true_sigma = (
+                req.atm_vol
+                + req.skew * moneyness
+                + req.smile * moneyness**2
+                + req.term * (maturity - 1.0)
+            )
+            true_sigma = max(true_sigma, 0.01)
+
+            price = black_scholes_price(
+                req.spot, strike, maturity, req.risk_free_rate,
+                req.dividend_yield, true_sigma, OptionType.CALL,
+            )
+            result = implied_volatility(
+                price, req.spot, strike, maturity,
+                req.risk_free_rate, req.dividend_yield, OptionType.CALL,
+            )
+            row.append(round(result["implied_volatility"], 8))
+        iv_grid.append(row)
+
+    return VolSurfaceResponse(
+        strikes=strikes,
+        maturities=maturities,
+        iv_grid=iv_grid,
+        spot=req.spot,
+    )

@@ -86,3 +86,24 @@ class IVResponse(BaseModel):
     implied_volatility: float
     iterations: int | None = None
     price_error: float | None = None
+
+
+class VolSurfaceRequest(BaseModel):
+    """Request for volatility surface data."""
+
+    spot: float = Field(default=100.0, gt=0)
+    risk_free_rate: float = Field(default=0.05, ge=0)
+    dividend_yield: float = Field(default=0.02, ge=0)
+    atm_vol: float = Field(default=0.2, gt=0, le=5.0)
+    skew: float = Field(default=-0.05, description="Vol skew per unit moneyness (K/S - 1)")
+    smile: float = Field(default=0.15, description="Vol convexity (smile curvature)")
+    term: float = Field(default=0.02, description="Term structure slope per year")
+    n_strikes: int = Field(default=20, ge=5, le=50)
+    n_maturities: int = Field(default=10, ge=3, le=30)
+
+
+class VolSurfaceResponse(BaseModel):
+    strikes: list[float]
+    maturities: list[float]
+    iv_grid: list[list[float]]  # [n_maturities][n_strikes]
+    spot: float
